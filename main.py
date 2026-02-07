@@ -2,7 +2,6 @@ import os
 import requests
 import io
 import random
-import time
 import google.generativeai as genai
 from PIL import Image, ImageDraw, ImageFont
 
@@ -16,55 +15,52 @@ model = genai.GenerativeModel('gemini-1.5-flash')
 
 def get_content():
     try:
-        prompt = "Write 1 short powerful motivational quote. Just the text, no quotes."
+        # Gemini se Hindi Quote aur Hashtags maangna
+        prompt = "Write 1 powerful motivational quote in HINDI. Then provide a caption and 5 trending hashtags. Format: Quote | Caption | Hashtags"
         response = model.generate_content(prompt)
-        return response.text.strip().replace('"', '')
+        parts = response.text.strip().split('|')
+        return parts[0].strip(), parts[1].strip(), parts[2].strip()
     except:
-        return "Your limitation—it's only your imagination."
+        return "सफलता की शुरुआत कोशिश से होती है।", "Keep Pushing!", "#motivation #hindi #success"
+
+def get_font():
+    # Hindi support ke liye Google Font download karna
+    font_url = "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-Bold.ttf"
+    r = requests.get(font_url)
+    return io.BytesIO(r.content)
 
 def create_image(quote):
-    # Stable Image Source: Unsplash Source or Picsum
-    for i in range(3):
-        try:
-            seed = random.randint(1, 1000)
-            # Hum Picsum use karenge jo bahut stable hai
-            img_url = f"https://picsum.photos/seed/{seed}/1080/1080?blur=2"
-            
-            response = requests.get(img_url, timeout=30)
-            if response.status_code == 200:
-                img = Image.open(io.BytesIO(response.content))
-                # Image ko thoda dark karenge taaki text dikhe
-                overlay = Image.new('RGBA', img.size, (0, 0, 0, 100))
-                img = img.convert('RGBA')
-                img = Image.alpha_composite(img, overlay).convert('RGB')
-                
-                draw = ImageDraw.Draw(img)
-                # Default font ke sath text center mein
-                draw.text((540, 540), quote, fill=(255, 255, 255), anchor="mm")
-                return img
-        except Exception as e:
-            print(f"Attempt {i+1} failed: {e}")
-            time.sleep(2)
-    return None
+    seed = random.randint(1, 999999)
+    img_url = f"https://image.pollinations.ai/prompt/dark-motivational-background?width=1080&height=1080&nologo=true&seed={seed}"
+    img = Image.open(io.BytesIO(requests.get(img_url).content))
+    draw = ImageDraw.Draw(img)
+    
+    # Font size 80 (Bada text)
+    try:
+        font_data = get_font()
+        font = ImageFont.truetype(font_data, 80)
+    except:
+        font = ImageFont.load_default()
+
+    # Text ko wrap karna aur center mein daalna
+    w, h = 1080, 1080
+    draw.text((w/2, h/2), quote, fill=(255, 255, 255), font=font, anchor="mm", align="center")
+    return img
 
 def post_to_fb(image_obj, message):
-    if image_obj is None: return
     img_byte_arr = io.BytesIO()
     image_obj.save(img_byte_arr, format='JPEG')
-    
     url = f"https://graph.facebook.com/{FB_PAGE_ID}/photos"
+    # Caption aur Hashtags 'message' mein jayenge
     payload = {'message': message, 'access_token': FB_ACCESS_TOKEN}
     files = {'source': ('post.jpg', img_byte_arr.getvalue(), 'image/jpeg')}
-    
     r = requests.post(url, data=payload, files=files)
-    print("FACEBOOK RESPONSE:", r.json())
+    print("FB Response:", r.json())
 
 if __name__ == "__main__":
-    q = get_content()
-    print(f"Quote: {q}")
-    img = create_image(q)
-    if img:
-        post_to_fb(img, q)
-        print("Done!")
-    else:
-        print("Could not get image.")
+    quote, caption, tags = get_content()
+    full_message = f"{caption}\n\n{tags}"
+    print(f"Post Content: {quote}")
+    
+    img = create_image(quote)
+    post_to_fb(img, full_message)

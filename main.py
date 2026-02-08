@@ -1,76 +1,78 @@
 import os, requests, io, random, json, time
-import google.generativeai as genai
+from google import genai
 from PIL import Image, ImageDraw, ImageFont
 
-# 1. Configuration
+# 1. Config
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 FB_PAGE_ID = os.getenv("FB_PAGE_ID")
 FB_ACCESS_TOKEN = os.getenv("FB_ACCESS_TOKEN")
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-# आपके फिक्स ट्रेंडिंग हैशटैग्स
+# Aapke fixed trending hashtags
 FIXED_TAGS = "#motivation #success #viral #trending #reels #mindset #affan_ai_motivation #foryou #explore #attitude #power #alpha #money"
 
 def get_content():
-    # मॉडल सेटअप - टेम्परेचर 1.0 ताकि कंटेंट रिपीट न हो
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    # Dynamic prompt taaki content kabhi repeat na ho
     try:
-        # 'Mehnat' और 'Pehchaan' जैसे शब्दों पर पाबंदी
-        prompt = f"Time:{time.time()}. Write a unique 2-line aggressive Hindi attitude quote. Don't use 'Mehnat', 'Sher', 'Pehchaan'. Use 'Sultanat', 'Daur', 'Hukumat'. Return JSON ONLY: {{\"quote\": \"...\", \"caption\": \"...\"}}"
-        response = model.generate_content(prompt, generation_config={"temperature": 1.0})
+        t_stamp = time.time()
+        prompt = (f"ID:{t_stamp}. Task: Write a brand new 2-line savage Hindi attitude quote. "
+                  "STRICT: Do NOT use 'Mehnat', 'Pehchaan', 'Sher', 'Khamoshi'. "
+                  "Use aggressive words like 'Hukumat', 'Khauf', 'Badshah'. "
+                  "Return ONLY JSON: {\"quote\": \"...\", \"caption\": \"...\"}")
         
-        # JSON क्लीनिंग और लोडिंग
-        clean_text = response.text.replace('```json', '').replace('```', '').strip()
-        data = json.loads(clean_text)
+        response = client.models.generate_content(model="gemini-1.5-flash", config={'temperature': 1.0}, contents=prompt)
+        data = json.loads(response.text.replace('```json', '').replace('```', '').strip())
         return data['quote'], data['caption']
     except:
-        # बैकअप कंटेंट अगर API फेल हो
-        return "पहचान की ज़रूरत उन्हें है जो भीड़ में चलते हैं, हम तो अकेले ही इतिहास लिखते हैं।", "Alpha Mindset."
+        return "अपना राज है, अपना अंदाज़ है, जो जलते हैं जलने दो।", "Living like a king."
 
 def create_image(quote):
-    # रैंडम इमेज फेच
-    img_res = requests.get(f"https://picsum.photos/1080/1080?random={random.randint(1,99999)}")
-    img = Image.open(io.BytesIO(img_res.content))
+    # Image fetching
+    img = Image.open(io.BytesIO(requests.get(f"https://picsum.photos/1080/1080?random={random.random()}").content))
     
-    # ब्लैक ओवरले (Text readability के लिए)
-    overlay = Image.new('RGBA', img.size, (0, 0, 0, 185))
+    # Black Overlay (Transparent)
+    overlay = Image.new('RGBA', img.size, (0, 0, 0, 170))
     img.paste(overlay, (0,0), overlay)
     draw = ImageDraw.Draw(img)
     
     try:
-        font = ImageFont.truetype("hindifont.ttf", 115)
-        # बड़ा वॉटरमार्क साइज 110
-        w_font = ImageFont.truetype("hindifont.ttf", 110) 
+        # Font size thoda chota kiya taaki bahar na jaye
+        font = ImageFont.truetype("hindifont.ttf", 95)
+        w_font = ImageFont.truetype("hindifont.ttf", 80) # Watermark size
     except:
         font = w_font = ImageFont.load_default()
 
-    # टेक्स्ट रैपिंग और ड्राइंग
+    # Dynamic Text Wrap: Ek line mein sirf 12-14 characters
     words = quote.split()
     lines, current = [], ""
     for w in words:
-        if len(current + w) < 13: current += w + " "
-        else: lines.append(current); current = w + " "
-    lines.append(current)
+        if len(current + w) < 15: current += w + " "
+        else: lines.append(current.strip()); current = w + " "
+    lines.append(current.strip())
 
-    y = 540 - (len(lines) * 95)
-    for line in lines:
-        draw.text((540, y), line.strip(), fill=(255, 215, 0), font=font, anchor="mm")
-        y += 195
+    # Auto-Centering: Gap ko lines ke hisaab se adjust kiya (95 ki jagah 130 step)
+    total_h = len(lines) * 130
+    y = (1080 - total_h) // 2 
     
-    # साफ़ और बड़ा वॉटरमार्क
-    draw.text((540, 1015), "@affan.ai.motivation", fill=(255, 255, 255, 210), font=w_font, anchor="mm")
+    for line in lines:
+        # Text shadow for clarity
+        draw.text((544, y + 4), line, fill=(0, 0, 0), font=font, anchor="mm")
+        draw.text((540, y), line, fill=(255, 215, 0), font=font, anchor="mm")
+        y += 130 # Gap kam kiya taaki image ke andar rahe
+    
+    # Large Watermark
+    draw.text((540, 1000), "@affan.ai.motivation", fill=(255, 255, 255, 200), font=w_font, anchor="mm")
     return img
 
 if __name__ == "__main__":
     q, c = get_content()
-    # फिक्स टैग्स के साथ कैप्शन
-    full_caption = f"{c}\n\n👉 Follow: @affan.ai.motivation\n\n.\n.\n{FIXED_TAGS}"
+    full_cap = f"{c}\n\n👉 Follow: @affan.ai.motivation\n\n.\n.\n{FIXED_TAGS}"
     
     img = create_image(q)
     buf = io.BytesIO()
     img.save(buf, format='JPEG', quality=95)
     
-    # फेसबुक पर पोस्ट
+    # FB Post
     requests.post(f"https://graph.facebook.com/{FB_PAGE_ID}/photos", 
-                  data={'message': full_caption, 'access_token': FB_ACCESS_TOKEN}, 
+                  data={'message': full_cap, 'access_token': FB_ACCESS_TOKEN}, 
                   files={'source': buf.getvalue()})
-    print("Post Successful with Fixed Tags!")
+    print("Run Success: Text wrap fixed & Fresh Content Postively Posted!")

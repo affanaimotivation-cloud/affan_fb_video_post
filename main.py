@@ -3,53 +3,58 @@ import requests
 import io
 import random
 import time
-from google import genai # Nayi library
+import google.generativeai as genai
 from PIL import Image, ImageDraw, ImageFont
 
-# 1. Config
+# 1. Config (Secrets)
 FB_PAGE_ID = os.getenv("FB_PAGE_ID")
 FB_ACCESS_TOKEN = os.getenv("FB_ACCESS_TOKEN")
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 UNSPLASH_KEY = os.getenv("UNSPLASH_ACCESS_KEY")
 
-# Naya Gemini Client
-client = genai.Client(api_key=GEMINI_KEY)
+# Purana import method jo aapke system mein kaam kar raha hai
+genai.configure(api_key=GEMINI_KEY)
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 def get_content():
-    topics = ["Discipline", "Focus", "Hard Work", "Success Mindset", "Sacrifice", "Leadership"]
+    # Random topics taaki content repeat na ho
+    topics = ["Discipline", "Focus", "High Ambition", "Wealth Creation", "Sacrifice", "Leadership"]
     chosen = random.choice(topics)
     try:
-        prompt = f"Write a powerful, unique Hindi motivational quote about {chosen}. Then write a 12-line deep inspirational caption in Hindi/Hinglish and 45 trending hashtags. Format: Quote | Caption | Tags"
-        response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+        # Sakht instruction for 40+ tags and 10 lines caption
+        prompt = f"Write a powerful, unique Hindi motivational quote about {chosen}. Then write a 10-line deep inspirational caption in Hindi/Hinglish and 40 trending hashtags. Format: Quote | Caption | Tags"
+        response = model.generate_content(prompt)
         parts = response.text.strip().split('|')
         return parts[0].strip(), parts[1].strip(), parts[2].strip()
     except:
-        return "मेहनत इतनी खामोशी से करो कि सफलता शोर मचा दे।", "Utho aur ladna shuru karo!", "#motivation #success #hindi #viral #40tags"
+        return "मेहनत का कोई विकल्प नहीं होता।", "Aaj se hi shuru karein!", "#motivation #success #quotes #viral #hindi"
 
 def get_premium_image():
-    queries = ["entrepreneur-man", "fitness-success", "dark-mountain", "galaxy-stars", "urban-motivation"]
+    # Insaan, Nature aur Space ka mix
+    queries = ["entrepreneur", "fitness", "galaxy", "mountain", "luxury-car", "city-night"]
     q = random.choice(queries)
     try:
-        # Sig parameter taaki har baar alag photo aaye
-        url = f"https://images.unsplash.com/photo-1?auto=format&fit=crop&w=1080&h=1080&q=80&query={q}&sig={random.randint(1,5000)}"
+        # Sig parameter aur timeout fix taaki 'NoneType' error na aaye
+        seed = random.randint(1, 10000)
+        url = f"https://images.unsplash.com/photo-1?auto=format&fit=crop&w=1080&h=1080&q=80&query={q}&sig={seed}"
         res = requests.get(url, timeout=30)
         if res.status_code == 200:
             return Image.open(io.BytesIO(res.content))
-    except:
-        print("Image download failed, using solid color fallback.")
+    except Exception as e:
+        print(f"Image Error: {e}. Using backup.")
     
-    # Backup: Agar image download nahi hoti, toh black background dega crash hone ki jagah
+    # Backup: Agar image download fail hui toh kaala parda nahi, solid dark color dega
     return Image.new('RGB', (1080, 1080), color=(15, 20, 35))
 
 def create_image(quote):
     img = get_premium_image()
-    # Overlay logic jo crash nahi hoga kyunki image hamesha 'img' mein hogi
+    # Crash protection: Ensure img has size
     overlay = Image.new('RGBA', img.size, (0, 0, 0, 160)) 
     img.paste(overlay, (0,0), overlay)
     
     draw = ImageDraw.Draw(img)
     try:
-        # Aapki font file
+        # Aapki uploaded font file
         font = ImageFont.truetype("hindifont.ttf", 115) 
     except:
         font = ImageFont.load_default()
@@ -69,6 +74,7 @@ def create_image(quote):
         draw.text((540, y_text), line.strip(), fill=(255, 215, 0), font=font, anchor="mm")
         y_text += 180
     
+    # Handle niche
     draw.text((540, 1030), "@affan.ai.motivation", fill=(255, 255, 255), anchor="mm")
     return img
 
@@ -85,4 +91,4 @@ if __name__ == "__main__":
     full_caption = f"{c}\n\n.\n.\n{t}"
     img = create_image(q)
     post_to_fb(img, full_caption)
-    print("Success: Final Fixed Version Posted!")
+    print("Success: Post done with original libraries!")

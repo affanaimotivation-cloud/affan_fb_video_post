@@ -1,97 +1,68 @@
-import os
-import requests
-import io
-import random
-import json
-import time
+import os, requests, io, random, json, time
+from google import genai
 from PIL import Image, ImageDraw, ImageFont
 
-# Nayi Library ko import karne ka sahi tareeka
-try:
-    from google import genai
-except ImportError:
-    print("EROR: requirements.txt mein 'google-genai' nahi mila!")
-
-# 1. Config
+# 1. Setup
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 FB_PAGE_ID = os.getenv("FB_PAGE_ID")
 FB_ACCESS_TOKEN = os.getenv("FB_ACCESS_TOKEN")
-GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 
-# Naya Connection Setup
-client = genai.Client(api_key=GEMINI_KEY)
+# Aapke trending hashtags jo hamesha aayenge
+FIXED_TAGS = "#motivation #success #viral #trending #reels #mindset #affan_ai_motivation #foryou #explore #attitude #power #alpha #money"
 
-# Fixed Viral Hashtags
-DEFAULT_TAGS = "#motivation #success #viral #trending #reels #mindset #affan_ai_motivation #foryou #explore #attitude #power #alpha #money"
-
-def get_content():
-    # Ab 'Pehchaan' aur 'Mehnat' repeat nahi hoga
+def get_fresh_content():
+    # Temperature 1.0 taaki har baar naya content mile
     try:
-        prompt = (
-            f"Generate a unique savage Hindi attitude quote. Seed: {time.time()}. "
-            "STRICT RULES: Do NOT use 'Mehnat', 'Pehchaan', 'Sher', 'Duniya', or 'Khamoshi'. "
-            "Use aggressive words like 'Khauf', 'Sikandar', 'Takht', 'Zila', 'Aukaat'. "
-            "Return ONLY JSON: {\"quote\": \"...\", \"caption\": \"...\"}"
-        )
-        
-        response = client.models.generate_content(
-            model="gemini-1.5-flash", 
-            contents=prompt
-        )
-        
-        clean_text = response.text.replace('```json', '').replace('```', '').strip()
-        data = json.loads(clean_text)
+        prompt = f"Time:{time.time()}. Task: Write a brand new 2-line savage Hindi attitude quote. Use heavy words like 'Sultanat', 'Daur', 'Hukumat'. STRICT: No 'Mehnat', 'Pehchaan', 'Sher'. Return JSON: {{\"quote\": \"...\", \"caption\": \"...\"}}"
+        response = client.models.generate_content(model="gemini-1.5-flash", config={'temperature': 1.0}, contents=prompt)
+        data = json.loads(response.text.replace('```json', '').replace('```', '').strip())
         return data['quote'], data['caption']
-    except Exception as e:
-        print(f"Content Error: {e}")
-        return None, None
+    except:
+        return "अपना दौर खुद बनाओ, दुनिया तो नकल करने में माहिर है।", "The Alpha King."
 
 def create_image(quote):
-    # Unique background image
-    res = requests.get(f"https://picsum.photos/1080/1080?random={random.randint(1,99999)}")
-    img = Image.open(io.BytesIO(res.content))
+    # Dynamic Image
+    img_data = requests.get(f"https://picsum.photos/1080/1080?random={random.randint(1,9999)}").content
+    img = Image.open(io.BytesIO(img_data))
     
-    overlay = Image.new('RGBA', img.size, (0, 0, 0, 185)) 
+    # Black Overlay taaki text saaf dikhe
+    overlay = Image.new('RGBA', img.size, (0, 0, 0, 180))
     img.paste(overlay, (0,0), overlay)
     draw = ImageDraw.Draw(img)
     
     try:
-        font = ImageFont.truetype("hindifont.ttf", 112)
-        # MEGA Watermark Size 115
-        watermark_font = ImageFont.truetype("hindifont.ttf", 115) 
+        font = ImageFont.truetype("hindifont.ttf", 115)
+        w_font = ImageFont.truetype("hindifont.ttf", 110) # Bada Watermark
     except:
-        font = ImageFont.load_default()
-        watermark_font = ImageFont.load_default()
+        font = w_font = ImageFont.load_default()
 
-    # Wrap Text
+    # Simple Text Wrap & Draw
     words = quote.split()
-    lines, current_line = [], ""
-    for word in words:
-        if len(current_line + word) < 13: current_line += word + " "
-        else: lines.append(current_line); current_line = word + " "
-    lines.append(current_line)
+    lines, current = [], ""
+    for w in words:
+        if len(current + w) < 14: current += w + " "
+        else: lines.append(current); current = w + " "
+    lines.append(current)
 
-    y_text = 540 - (len(lines) * 95)
+    y = 540 - (len(lines) * 90)
     for line in lines:
-        draw.text((546, y_text + 6), line.strip(), (0, 0, 0), font=font, anchor="mm")
-        draw.text((540, y_text), line.strip(), (255, 215, 0), font=font, anchor="mm")
-        y_text += 190
+        draw.text((540, y), line.strip(), fill=(255, 215, 0), font=font, anchor="mm")
+        y += 180
     
     # Large Clear Watermark
-    draw.text((540, 1010), "@affan.ai.motivation", (255, 255, 255, 220), font=watermark_font, anchor="mm")
+    draw.text((540, 1000), "@affan.ai.motivation", fill=(255, 255, 255, 210), font=w_font, anchor="mm")
     return img
 
 if __name__ == "__main__":
-    q, c = get_content()
-    if q and c:
-        full_caption = f"{c}\n\n👉 Follow for more: @affan.ai.motivation\n\n.\n.\n{DEFAULT_TAGS}"
-        img = create_image(q)
-        img_byte_arr = io.BytesIO()
-        img.save(img_byte_arr, format='JPEG', quality=95)
-        
-        # Facebook Post
-        requests.post(
-            f"https://graph.facebook.com/{FB_PAGE_ID}/photos",
-            data={'message': full_caption, 'access_token': FB_ACCESS_TOKEN},
-            files={'source': ('post.jpg', img_byte_arr.getvalue(), 'image/jpeg')}
-        )
-        print("Success: New Content & Big Watermark Posted!")
+    q, c = get_fresh_content()
+    full_caption = f"{c}\n\n👉 Follow: @affan.ai.motivation\n\n.\n.\n{FIXED_TAGS}"
+    
+    img = create_image(q)
+    buf = io.BytesIO()
+    img.save(buf, format='JPEG')
+    
+    # Facebook Post
+    requests.post(f"https://graph.facebook.com/{FB_PAGE_ID}/photos", 
+                  data={'message': full_caption, 'access_token': FB_ACCESS_TOKEN}, 
+                  files={'source': buf.getvalue()})
+    print("Success: Fresh Content Posted!")

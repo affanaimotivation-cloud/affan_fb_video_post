@@ -17,10 +17,12 @@ FIXED_TAGS = "#motivation #success #viral #trending #reels #mindset #affan_ai_mo
 
 def get_unique_content():
     try:
-        prompt = (f"ID:{time.time()}. Write a brand new 2-line savage Hindi attitude quote. "
-                  "STRICT: No 'Duniya', 'Pehchaan', 'Mehnat'. Focus on 'Royal' and 'Killer' attitude. "
-                  "Return JSON ONLY: {\"quote\": \"...\", \"caption\": \"...\"}")
-        
+        prompt = # Forcefully using full path and specific version
+        response = client.models.generate_content(
+            model="models/gemini-1.5-flash-002", # Full path aur 002 version
+            config={'temperature': 1.0}, 
+            contents=prompt
+        )
         # 'models/' prefix lagane se compatibility badh jati hai
         response = client.models.generate_content(
             model="gemini-1.5-flash", 

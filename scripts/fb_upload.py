@@ -17,3 +17,5 @@ def upload_video(video, audio, subtitle):
     }
 
     requests.post(url, files=files, data=data)
+print("FB STATUS:", response.status_code)
+print("FB RESPONSE:", response.text)

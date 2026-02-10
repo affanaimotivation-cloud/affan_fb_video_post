@@ -10,23 +10,24 @@ def upload_video(video_path, caption=""):
 
     url = f"https://graph.facebook.com/v18.0/{PAGE_ID}/video_reels"
 
-    data = {
+    params = {
         "access_token": PAGE_TOKEN,
         "description": caption
     }
 
     with open(video_path, "rb") as video:
         files = {
-            "file": video
+            "source": video
         }
 
-        response = requests.post(url, data=data, files=files)
+        response = requests.post(url, data=params, files=files)
 
-    # ✅ DEBUG OUTPUT (ab error nahi aayega)
-    print("FB STATUS:", response.status_code)
+    # 🔥 DEBUG OUTPUT (VERY IMPORTANT)
+    print("FB STATUS CODE:", response.status_code)
     print("FB RESPONSE:", response.text)
 
+    # ❌ agar Facebook error de to workflow FAIL ho
     if response.status_code != 200:
-        raise Exception("Facebook upload failed")
+        raise Exception("Facebook video upload failed")
 
-    return response.json()
+    print("✅ Facebook Reel successfully uploaded!")

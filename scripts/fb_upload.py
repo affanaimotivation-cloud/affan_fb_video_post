@@ -28,6 +28,8 @@ def upload_video(video_path, caption=""):
 
     video_id = start_res["video_id"]
     upload_url = start_res["upload_url"]
+video_id = start_res["video_id"]
+upload_url = start_res["upload_url"]
 
-    # ✅ markdown / bracket fix (YAHI jagah sahi hai)
-    upload_url = upload_url.strip("
+# ✅ markdown / bracket fix
+upload_url = upload_url.strip("[]")

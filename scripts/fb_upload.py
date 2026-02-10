@@ -16,18 +16,13 @@ def upload_video(video_path, caption=""):
     }
 
     with open(video_path, "rb") as video:
-        files = {
-            "source": video
-        }
-
+        files = {"source": video}
         response = requests.post(url, data=params, files=files)
 
-    # 🔥 DEBUG OUTPUT (VERY IMPORTANT)
-    print("FB STATUS CODE:", response.status_code)
+    print("FB STATUS:", response.status_code)
     print("FB RESPONSE:", response.text)
 
-    # ❌ agar Facebook error de to workflow FAIL ho
     if response.status_code != 200:
-        raise Exception("Facebook video upload failed")
+        raise Exception("Facebook upload failed")
 
-    print("✅ Facebook Reel successfully uploaded!")
+    print("✅ Reel successfully uploaded")

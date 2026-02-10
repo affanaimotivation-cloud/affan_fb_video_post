@@ -56,6 +56,6 @@ def upload_video(video_path, caption=""):
         "video_id": video_id,
         "description": caption
     }
-
-    finish_res = requests.post(start_url, data=finish_payload).json()
-    print("FINISH RESPONSE:",
+        finish_res = requests.post(start_url, data=finish_payload).json()
+    print("FINISH RESPONSE:", finish_res)
+    return finish_res

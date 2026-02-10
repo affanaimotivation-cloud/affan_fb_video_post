@@ -29,8 +29,24 @@ def upload_video(video_path, caption=""):
     video_id = start_res["video_id"]
     upload_url = start_res["upload_url"]
 
-    # bracket / markdown fix
+    # bracket fix (logs me markdown aa jata hai)
     upload_url = upload_url.strip("[]")
 
     # ---------- STEP 2: TRANSFER ----------
-    with
+    with open(video_path, "rb") as f:
+        headers = {
+            "Authorization": f"OAuth {PAGE_TOKEN}",
+            "Content-Type": "application/octet-stream",
+            "file_offset": "0"
+        }
+
+        transfer_res = requests.post(
+            upload_url,
+            headers=headers,
+            data=f
+        )
+
+    print("TRANSFER STATUS:", transfer_res.status_code)
+    print("TRANSFER RESPONSE:", transfer_res.text)
+
+    if transfer_res.status_code not in (200

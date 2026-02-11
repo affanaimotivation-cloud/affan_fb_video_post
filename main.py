@@ -1,56 +1,48 @@
 import os
-import requests
+import time
+from scripts.fb_upload import upload_video
 
-GRAPH_VERSION = "v24.0"
-
-def upload_video(video_path, caption=""):
-    PAGE_ID = os.getenv("FB_PAGE_ID")
-    PAGE_TOKEN = os.getenv("FB_PAGE_TOKEN")
-
-    if not PAGE_ID or not PAGE_TOKEN:
-        raise ValueError("FB_PAGE_ID ya FB_PAGE_TOKEN missing hai")
-
-    file_size = os.path.getsize(video_path)
-    print(f"Uploading file of size: {file_size} bytes")
-
-    # STEP 1: START
-    start_url = f"https://graph.facebook.com/{GRAPH_VERSION}/{PAGE_ID}/video_reels"
-    params = {
-        "access_token": PAGE_TOKEN,
-        "upload_phase": "start",
-        "file_size": file_size
-    }
-    start_res = requests.post(start_url, params=params).json()
+def create_video():
+    """
+    यहाँ आपका वीडियो बनाने का लॉजिक आएगा।
+    अभी के लिए, हम मान रहे हैं कि 'video.mp4' पहले से मौजूद है 
+    या कोई दूसरी प्रोसेस इसे बना रही है।
+    """
+    video_file = "video.mp4" # अपनी वीडियो फाइल का नाम यहाँ लिखें
     
-    if "video_id" not in start_res:
-        raise Exception(f"Start failed: {start_res}")
+    if not os.path.exists(video_file):
+        # अगर आप MoviePy इस्तेमाल कर रहे हैं, तो सुनिश्चित करें कि 
+        # clip.write_videofile(video_file) यहाँ पूरी तरह रन हुआ हो।
+        print(f"Error: {video_file} ढूंढने में असफल!")
+        return None
+        
+    return video_file
 
-    upload_url = start_res["upload_url"]
-
-    # STEP 2: TRANSFER (SABSE ZARURI BADLAV)
-    with open(video_path, "rb") as f:
-        video_data = f.read()
-
-    headers = {
-        "Authorization": f"OAuth {PAGE_TOKEN}",
-        "Content-Type": "application/octet-stream",
-        "Offset": "0",
-        "Content-Length": str(len(video_data)) # Size ko string me convert kiya
-    }
-
-    # Stream=False karke direct bytes bhej rahe hain
-    transfer_res = requests.post(upload_url, headers=headers, data=video_data)
+def main():
+    print("--- Process Start ---")
     
-    if transfer_res.status_code not in (200, 201):
-        print(f"Status: {transfer_res.status_code}, Response: {transfer_res.text}")
-        raise Exception("Video transfer failed")
+    # 1. वीडियो फाइल प्राप्त करें
+    video_path = create_video()
+    
+    if video_path:
+        # 2. वीडियो का साइज चेक करें (ताकि 111 bytes वाला एरर न आए)
+        file_size = os.path.getsize(video_path)
+        print(f"Video File Found: {video_path} ({file_size} bytes)")
+        
+        if file_size < 1000: # 1KB से छोटी फाइल मतलब वीडियो खराब है
+            print("Error: वीडियो फाइल बहुत छोटी या करप्ट है। पोस्टिंग कैंसल।")
+            return
 
-    # STEP 3: FINISH
-    finish_params = {
-        "access_token": PAGE_TOKEN,
-        "upload_phase": "finish",
-        "video_id": start_res["video_id"],
-        "description": caption,
-        "video_state": "PUBLISHED"
-    }
-    return requests.post(start_url, params=finish_params).json()
+        # 3. फेसबुक पर अपलोड करें
+        caption = "My Awesome Reel! #motivation #reels #ai"
+        try:
+            print("Uploading to Facebook...")
+            response = upload_video(video_path, caption)
+            print("SUCCESS! Post Response:", response)
+        except Exception as e:
+            print(f"FAILED! Error: {str(e)}")
+    
+    print("--- Process End ---")
+
+if __name__ == "__main__":
+    main()

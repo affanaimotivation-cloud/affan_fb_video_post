@@ -24,7 +24,8 @@ def upload_video(video_path, caption=""):
     # =====================================
     # STEP 1️⃣ START
     # =====================================
-    start_url = f"https://graph.facebook.com/{GRAPH_VERSION}/{PAGE_ID}/video_reels"
+    start_url = f"https://graph.facebook.com/{GRAPH_VERSION}/{PAGE_ID}/videos"
+
 
     start_payload = {
         "upload_phase": "start",

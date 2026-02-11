@@ -11,3 +11,11 @@ def main():
 
 if __name__ == "__main__":
     main()
+import os
+
+print("Video path:", video_path)
+print("File exists:", os.path.exists(video_path))
+print("File size:", os.path.getsize(video_path))
+
+with open(video_path, "rb") as f:
+    print("First 50 bytes:", f.read(50))

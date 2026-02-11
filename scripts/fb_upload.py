@@ -5,97 +5,87 @@ GRAPH_VERSION = "v24.0"
 
 
 def upload_video(video_path, caption=""):
-    """
-    Upload video as Facebook Reel
-    """
-
     PAGE_ID = os.getenv("FB_PAGE_ID")
     PAGE_TOKEN = os.getenv("FB_PAGE_TOKEN")
 
     if not PAGE_ID or not PAGE_TOKEN:
-        raise ValueError("FB_PAGE_ID ya FB_PAGE_TOKEN missing hai")
+        raise ValueError("FB_PAGE_ID or FB_PAGE_TOKEN missing")
 
     if not os.path.exists(video_path):
-        raise FileNotFoundError(f"Video file not found: {video_path}")
+        raise FileNotFoundError("Video file not found")
 
     file_size = os.path.getsize(video_path)
 
     if file_size < 1000:
-        raise ValueError("Video file invalid ya bahut choti hai")
+        raise ValueError("Video file too small or invalid")
 
-    print("Uploading File Size:", file_size)
+    print("Uploading file size:", file_size)
 
     # =====================================
-    # STEP 1️⃣ START PHASE
+    # STEP 1️⃣ START
     # =====================================
     start_url = f"https://graph.facebook.com/{GRAPH_VERSION}/{PAGE_ID}/video_reels"
 
     start_payload = {
-        "access_token": PAGE_TOKEN,
         "upload_phase": "start",
-        "file_size": file_size
+        "file_size": file_size,
+        "access_token": PAGE_TOKEN
     }
 
     start_res = requests.post(start_url, data=start_payload)
-    start_json = start_res.json()
+    start_data = start_res.json()
 
     print("START STATUS:", start_res.status_code)
-    print("START RESPONSE:", start_json)
+    print("START RESPONSE:", start_data)
 
-    if start_res.status_code != 200 or "video_id" not in start_json:
-        raise Exception(f"Upload start failed: {start_json}")
+    if start_res.status_code != 200:
+        raise Exception("Start phase failed")
 
-    video_id = start_json["video_id"]
-    upload_url = start_json["upload_url"]
-   
+    video_id = start_data["video_id"]
+    upload_url = start_data["upload_url"]
+
     # =====================================
-    # STEP 2️⃣ TRANSFER PHASE (Stable Fix)
+    # STEP 2️⃣ TRANSFER (Single clean binary)
     # =====================================
-
-    file_size = os.path.getsize(video_path)
-
     with open(video_path, "rb") as f:
-        video_bytes = f.read()
+        video_binary = f.read()
 
     headers = {
-        "Authorization": f"OAuth {FB_PAGE_TOKEN}",
-        "Offset": "0",
-        "Content-Type": "application/octet-stream",
-        "Content-Length": str(file_size)
+        "Authorization": f"OAuth {PAGE_TOKEN}",
+        "Content-Type": "application/octet-stream"
     }
 
     transfer_res = requests.post(
         upload_url,
         headers=headers,
-        data=video_bytes
+        data=video_binary
     )
 
     print("TRANSFER STATUS:", transfer_res.status_code)
     print("TRANSFER RESPONSE:", transfer_res.text)
 
     if transfer_res.status_code not in (200, 201):
-        raise Exception("Transfer failed")
-
+        raise Exception("Transfer phase failed")
 
     # =====================================
-    # STEP 3️⃣ FINISH PHASE
+    # STEP 3️⃣ FINISH
     # =====================================
     finish_payload = {
-        "access_token": PAGE_TOKEN,
         "upload_phase": "finish",
         "video_id": video_id,
         "description": caption,
-        "video_state": "PUBLISHED"
+        "video_state": "PUBLISHED",
+        "access_token": PAGE_TOKEN
     }
 
     finish_res = requests.post(start_url, data=finish_payload)
-    finish_json = finish_res.json()
+    finish_data = finish_res.json()
 
     print("FINISH STATUS:", finish_res.status_code)
-    print("FINISH RESPONSE:", finish_json)
+    print("FINISH RESPONSE:", finish_data)
 
     if finish_res.status_code != 200:
-        raise Exception(f"Finish failed: {finish_json}")
+        raise Exception("Finish phase failed")
 
-    print("✅ Reel Successfully Uploaded!")
-    return finish_json
+    print("✅ Reel Uploaded Successfully!")
+    return finish_data

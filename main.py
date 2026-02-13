@@ -36,20 +36,21 @@ def download_video():
 
 
 # ---------------------------
-# 2️⃣ Generate Hindi Motivation Voice
+# 2️⃣ Generate Hindi Motivation Voice (Updated to 5 Lines)
 # ---------------------------
 def generate_voice():
+    # Yeh rahi aapki 5 line ki motivational quote
     text = """
-    जिंदगी में कभी हार मत मानो।
-    सफलता उन्हीं को मिलती है
-    जो लगातार मेहनत करते हैं।
-    खुद पर भरोसा रखो,
-    तुम्हारा समय जरूर आएगा।
+    मंजिल उन्हीं को मिलती है जिनके सपनों में जान होती है,
+    पंखों से कुछ नहीं होता हौसलों से उड़ान होती है।
+    मैदान में हारा हुआ इंसान फिर से जीत सकता है,
+    लेकिन मन से हारा हुआ इंसान कभी नहीं जीत सकता।
+    इसलिए अपने मन को मजबूत बनाओ और आगे बढ़ो।
     """
 
     tts = gTTS(text=text, lang="hi")
     tts.save("voice.mp3")
-    print("Voice Generated")
+    print("Voice Generated (5 Lines)")
 
 
 # ---------------------------
@@ -86,6 +87,11 @@ def upload_video(video_path, caption=""):
     }
 
     start_res = requests.post(start_url, data=start_payload).json()
+    
+    if "video_id" not in start_res:
+        print("Error starting upload:", start_res)
+        return
+
     video_id = start_res["video_id"]
     upload_url = start_res["upload_url"]
 
@@ -117,10 +123,13 @@ def upload_video(video_path, caption=""):
 # MAIN RUN
 # ---------------------------
 def main():
-    download_video()
-    generate_voice()
-    merge_video()
-    upload_video("final_video.mp4", "Daily Motivation 💪 #motivation #hindi")
+    try:
+        download_video()
+        generate_voice()
+        merge_video()
+        upload_video("final_video.mp4", "सफलता का मंत्र 💪 #motivation #hindi #reels")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 
 if __name__ == "__main__":
